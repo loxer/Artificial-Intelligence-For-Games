@@ -128,7 +128,7 @@ public class SuperAI extends AI {
 	}
 
 	private void doThingsFirst() {
-		countObstaclePoints();
+		amountOfObstaclePoints = countPolygonPoints(obstacles);
 		calculateSizeOfObstacleCorners();
 	}
 
@@ -143,10 +143,12 @@ public class SuperAI extends AI {
 		dijkstra(currentPosition);
 	}
 
-	private void countObstaclePoints() {
-		for (int i = 0; i < obstacles.length; i++) {
-			amountOfObstaclePoints += obstacles[i].xpoints.length;
+	private int countPolygonPoints(Polygon[] polygon) {
+		int numberOfPoints = 0;
+		for (int i = 0; i < polygon.length; i++) {
+			numberOfPoints += polygon[i].xpoints.length;
 		}
+		return numberOfPoints;
 	}
 
 	private void calculateSizeOfObstacleCorners() {
@@ -158,45 +160,50 @@ public class SuperAI extends AI {
 	}
 
 	private void collectObstaclesInformation() {
-		ArrayList<Point2D> obstaclePointsList = new ArrayList<Point2D>();
-		ArrayList<Line2D> obstacleLinesList = new ArrayList<Line2D>();
+		obstaclePoints = new Point2D[amountOfObstaclePoints];
+		obstacleLines = new Line2D[amountOfObstaclePoints];
+		this.obstacleCorners = new Rectangle2D[amountOfObstaclePoints];		
+
+		double halfRectangle = sizeOfObstacleCorners / 2;
+		int pos = 0;
 
 		for (int i = 0; i < obstacles.length; i++) {
 			int numberOfObstaclePoints = obstacles[i].xpoints.length;
 
 			for (int j = 1; j < numberOfObstaclePoints; j++) {
 
-				obstaclePointsList.add(new Point2D.Float(obstacles[i].xpoints[j - 1], obstacles[i].ypoints[j - 1]));
-				obstacleLinesList.add(new Line2D.Float(obstacles[i].xpoints[j - 1], obstacles[i].ypoints[j - 1],
-						obstacles[i].xpoints[j], obstacles[i].ypoints[j]));
+				obstaclePoints[pos] = new Point2D.Float(obstacles[i].xpoints[j - 1], obstacles[i].ypoints[j - 1]);
+				obstacleLines[pos] = new Line2D.Float(obstacles[i].xpoints[j - 1], obstacles[i].ypoints[j - 1],
+						obstacles[i].xpoints[j], obstacles[i].ypoints[j]);
+				obstacleCorners[pos] = new Rectangle2D.Double(obstaclePoints[pos].getX() - halfRectangle,
+						obstaclePoints[pos].getY() - halfRectangle, sizeOfObstacleCorners, sizeOfObstacleCorners);
+				pos++;
 			}
+			
 			// connect the end with the beginning
-			obstacleLinesList.add(new Line2D.Float(obstacles[i].xpoints[numberOfObstaclePoints - 1],
+			obstacleLines[pos] = new Line2D.Float(obstacles[i].xpoints[numberOfObstaclePoints - 1],
 					obstacles[i].ypoints[numberOfObstaclePoints - 1], obstacles[i].xpoints[0],
-					obstacles[i].ypoints[0]));
+					obstacles[i].ypoints[0]);
 
 			// add the first point
-			obstaclePointsList.add(new Point2D.Float(obstacles[i].xpoints[numberOfObstaclePoints - 1],
-					obstacles[i].ypoints[numberOfObstaclePoints - 1]));
+			obstaclePoints[pos] = new Point2D.Float(obstacles[i].xpoints[numberOfObstaclePoints - 1],
+					obstacles[i].ypoints[numberOfObstaclePoints - 1]);
+			
+			obstacleCorners[pos] = new Rectangle2D.Double(obstaclePoints[pos].getX() - halfRectangle,
+					obstaclePoints[pos].getY() - halfRectangle, sizeOfObstacleCorners, sizeOfObstacleCorners);
+			
+			pos++;
 		}
+	}
 
-		Point2D[] obstaclePoints = new Point2D[obstaclePointsList.size()];
-		obstacleCorners = new Rectangle2D[obstaclePointsList.size()];
-		double halfRectangle = sizeOfObstacleCorners / 2;
-		for (int i = 0; i < obstaclePoints.length; i++) {
-			obstaclePoints[i] = obstaclePointsList.get(i);
-			obstacleCorners[i] = new Rectangle2D.Double(obstaclePoints[i].getX() - halfRectangle,
-					obstaclePoints[i].getY() - halfRectangle, sizeOfObstacleCorners, sizeOfObstacleCorners);
+	private void collectFastZonesInformation() {
+		Polygon[] fastZones = info.getTrack().getFastZones();
+//		int numberOfFastZones = countPolygonPoints(fastZones);
+		
+		ArrayList<Point2D> fastZonesList = new ArrayList<Point2D>();
 
-		}
-
-		this.obstaclePoints = obstaclePoints;
-
-		Line2D[] obstacleLines = new Line2D[obstacleLinesList.size()];
-		for (int i = 0; i < obstacleLines.length; i++) {
-			obstacleLines[i] = obstacleLinesList.get(i);
-		}
-		this.obstacleLines = obstacleLines;
+		
+		
 	}
 
 	private void fillHelperPositions() {
@@ -421,7 +428,12 @@ public class SuperAI extends AI {
 				vertices[i].resetExtraCosts();
 			}
 			calculateSizeOfObstacleCorners();
-			this.obstacleCorners = Redo.resizeObstacleCorners(obstaclePoints, sizeOfObstacleCorners);
+			this.obstacleCorners = Redo.resizeObstacleCorners(obstaclePoints, sizeOfObstacleCorners); // apparently gets
+																										// done after
+																										// every
+																										// checkpoint,
+																										// even without
+																										// failures
 			checkForNewRoute = true;
 		}
 
@@ -478,7 +490,7 @@ public class SuperAI extends AI {
 	}
 
 	private void findVerticesConnectedToThisVertex(Vertex vertex) {
-		int doubleDistanceForConnections = MAXIMUM_DISTANCE_BETWEEN_POINTS*2;
+		int doubleDistanceForConnections = MAXIMUM_DISTANCE_BETWEEN_POINTS * 2;
 		for (int i = 0; i < vertices.length; i++) {
 			if (vertex.getLocation().distanceSq(vertices[i].getLocation()) < doubleDistanceForConnections) {
 				Line2D connection = new Line2D.Float(vertex.getLocation(), vertices[i].getLocation());
@@ -837,7 +849,7 @@ public class SuperAI extends AI {
 					+ (float) pointsOfFailure.get(resetCounter - 1).getY());
 		}
 		System.out.println("Timer: " + minutes + ":" + seconds);
-		System.out.println("probablyStucked(): " + probablyStucked());
+		// System.out.println("probablyStucked(): " + probablyStucked());
 		System.out.println();
 		System.out.println("-----------------");
 		System.out.println();
