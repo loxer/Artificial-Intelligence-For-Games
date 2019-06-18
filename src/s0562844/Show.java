@@ -137,11 +137,18 @@ public class Show {
 		}
 	}
 
-	public static void printLines(Line2D[] lines) {
-		for (int i = 0; i < lines.length; i++) {
-			double length = Point2D.distanceSq(lines[i].getX1(), lines[i].getY1(), lines[i].getX2(), lines[i].getY2());
+	public static void line(Line2D line) {
 			GL11.glBegin(GL11.GL_LINES);
-			GL11.glColor3d(1, 0.55, 0.12);
+			GL11.glColor3d(1, 0, 1);
+			GL11.glVertex2d(line.getX1(), line.getY1());
+			GL11.glVertex2d(line.getX2(), line.getY2());
+			GL11.glEnd();
+	}
+	
+	public static void lines(Line2D[] lines) {
+		for (int i = 0; i < lines.length; i++) {
+			GL11.glBegin(GL11.GL_LINES);
+			GL11.glColor3d(1, 0, 1);
 			GL11.glVertex2d(lines[i].getX1(), lines[i].getY1());
 			GL11.glVertex2d(lines[i].getX2(), lines[i].getY2());
 			GL11.glEnd();

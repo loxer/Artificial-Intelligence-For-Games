@@ -75,6 +75,9 @@ public class SuperAI extends AI {
 	private int archivedCheckpoints = 0;
 
 	// Polygon Information
+	private Terrain obstacles;
+	private Terrain fastZones;
+	private Terrain slowZones;
 	private Polygon[] obstaclesPolygon = info.getTrack().getObstacles();
 	private Point2D[] obstaclePoints;
 	private Line2D[] obstacleLines;
@@ -137,7 +140,7 @@ public class SuperAI extends AI {
 	}
 
 	private void doThingsFirst() {
-		amountOfObstaclePoints = PolygonSplitter.countPolygonPoints(obstaclesPolygon);
+		amountOfObstaclePoints = Terrain.countPolygonPoints(obstaclesPolygon);
 		calculateSizeOfObstacleCorners();
 	}
 
@@ -162,16 +165,16 @@ public class SuperAI extends AI {
 	}
 
 	private void collectInformationFromPolygons() {
-		PolygonSplitter obstacles = new PolygonSplitter(obstaclesPolygon, sizeOfObstacleCorners);
+		this.obstacles = new Terrain(obstaclesPolygon, sizeOfObstacleCorners);
 		this.obstaclePoints = obstacles.getPoints();
 		this.obstacleLines = obstacles.getLines();
 		this.obstacleCorners = obstacles.getCorners();
 
-		PolygonSplitter fastZones = new PolygonSplitter(obstaclesPolygon);
+		this.fastZones = new Terrain(info.getTrack().getFastZones());
 		this.fastPoints = fastZones.getPoints();
 		this.fastLines = fastZones.getLines();
 
-		PolygonSplitter slowZones = new PolygonSplitter(obstaclesPolygon);
+		this.slowZones = new Terrain(info.getTrack().getSlowZones());
 		this.slowPoints = slowZones.getPoints();
 		this.slowLines = slowZones.getLines();
 		this.slowCorners = slowZones.getCorners();
@@ -179,15 +182,16 @@ public class SuperAI extends AI {
 	}
 
 	private void printLength() {
-		int counter = 0; 
+		int counter = 0;
 		for (int i = 0; i < slowLines.length; i++) {
 			double length = Point2D.distanceSq(slowLines[i].getX1(), slowLines[i].getY1(), slowLines[i].getX2(),
 					slowLines[i].getY2());
 			if (length == 10000.0) {
 				counter++;
-				System.out.println(slowLines[i].getX1() + "/" + slowLines[i].getY1() + " -> " + slowLines[i].getX2() + "/" + slowLines[i].getY2());
+				System.out.println(slowLines[i].getX1() + "/" + slowLines[i].getY1() + " -> " + slowLines[i].getX2()
+						+ "/" + slowLines[i].getY2());
 				System.out.println(length);
-				
+
 			}
 		}
 		System.out.println(counter);
@@ -207,36 +211,62 @@ public class SuperAI extends AI {
 			for (int j = 0; j < divider; j++) {
 				Point2D potentialHelper = new Point2D.Float(width - pointsDistanceInX * i - pointsDistanceInX * 0.5f,
 						height - pointsDistanceInY * j - pointsDistanceInY * 0.5f);
-				if (!obstaclePointToClose(potentialHelper) && !isInsideObstacle(potentialHelper)) {
+				if (!obstaclePointToClose(potentialHelper) && !obstacles.isInsideHere(potentialHelper)) {
 					helperCoordinatesList.add(potentialHelper);
 				}
 			}
 		}
 
 		helperCoordinates = new Point2D[helperCoordinatesList.size()];
-		Vertex[] vertices = new Vertex[helperCoordinates.length];
+		vertices = new Vertex[helperCoordinates.length];
 
 		for (int i = 0; i < helperCoordinates.length; i++) {
 			helperCoordinates[i] = helperCoordinatesList.get(i);
 			vertices[i] = new Vertex(helperCoordinates[i]);
 		}
-		this.vertices = vertices;
 	}
 
 	private void findConnectingPoints() {
 		for (int i = 0; i < vertices.length; i++) {
 			for (int j = i + 1; j < vertices.length; j++) {
-				Line2D connection = new Line2D.Float(helperCoordinates[i], helperCoordinates[j]);
-				if (!obstacleBetween(connection)
-						&& helperCoordinates[i].distanceSq(helperCoordinates[j]) < MAXIMUM_DISTANCE_BETWEEN_POINTS) {
-					vertices[i].setEdgeAndPoint(connection, vertices[j]);
-					vertices[j].setEdgeAndPoint(connection, vertices[i]);
+				if (helperCoordinates[i].distanceSq(helperCoordinates[j]) < MAXIMUM_DISTANCE_BETWEEN_POINTS) {
+
+					if (!pointsInDifferentZones(helperCoordinates[i], helperCoordinates[j])) {
+
+						Line2D connection = new Line2D.Float(helperCoordinates[i], helperCoordinates[j]);
+						if (!obstacleBetween(connection)) {
+							vertices[i].setEdgeAndPoint(connection, vertices[j]);
+							vertices[j].setEdgeAndPoint(connection, vertices[i]);
+						}
+					}
 				}
 			}
 			vertices[i].setReady(getExtraCosts(vertices[i].getLocation()));
 			// vertices[i].setReady(0);
 		}
 		printNumberOfConnections();
+	}
+
+	private Boolean pointsInDifferentZones(Point2D point1, Point2D point2) {
+		Boolean pointOneInsideSlowZone = slowZones.isInsideHere(point1);
+		Boolean pointTwoInsideSlowZone = slowZones.isInsideHere(point2);
+		
+		if (pointOneInsideSlowZone ^ pointTwoInsideSlowZone) {
+			return true;
+		}
+		
+		Boolean pointOneInsideFastZone = fastZones.isInsideHere(point1);
+		Boolean pointTwoInsideFastZone = fastZones.isInsideHere(point2);
+
+		if (pointOneInsideFastZone ^ pointTwoInsideFastZone) {
+			return true;
+		}
+
+		if (pointOneInsideSlowZone && pointTwoInsideFastZone || pointTwoInsideSlowZone && pointTwoInsideFastZone) {			
+			return true;
+		}
+
+		return false;
 	}
 
 	private float getExtraCosts(Point2D point) {
@@ -657,14 +687,14 @@ public class SuperAI extends AI {
 		return false;
 	}
 
-	private Boolean isInsideObstacle(Point2D point) {
-		for (int i = 0; i < obstaclesPolygon.length; i++) {
-			if (obstaclesPolygon[i].contains(point)) {
-				return true;
-			}
-		}
-		return false;
-	}
+	// private Boolean isInsideObstacle(Point2D point) {
+	// for (int i = 0; i < obstaclesPolygon.length; i++) {
+	// if (obstaclesPolygon[i].contains(point)) {
+	// return true;
+	// }
+	// }
+	// return false;
+	// }
 
 	private void dijkstra(Vertex start) {
 		ArrayList<Vertex> queue = new ArrayList<Vertex>();
@@ -792,6 +822,13 @@ public class SuperAI extends AI {
 		Show.lineToDestination(carPos, currentDrivingDestination);
 		Show.obstacleCorners(obstacleCorners, sizeOfObstacleCorners);
 		Show.aHelperPointsConnections(vertices);
+
+		for (int i = 0; i < vertices.length; i++) {
+			if (fastZones.isInsideHere(vertices[i].getLocation()) || slowZones.isInsideHere(vertices[i].getLocation())) {
+				Show.lines(vertices[i].getEdges());
+			}
+		}
+
 		// Show.lineOfFutureRoutePoint(route, currentRoutePoint);
 		// Show.nextLine(showLine);
 

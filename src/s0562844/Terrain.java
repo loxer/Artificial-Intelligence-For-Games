@@ -5,20 +5,23 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 
-public class PolygonSplitter {
+public class Terrain {
+	Polygon[] polygon;
 	Point2D[] points;
 	Line2D[] lines;
 	Rectangle2D[] corners;
 
-	public PolygonSplitter(Polygon[] polygon, float sizeOfObstacleCorners) {
-		collectInformationOfPolygon(polygon, sizeOfObstacleCorners);
+	public Terrain(Polygon[] polygon, float sizeOfObstacleCorners) {
+		this.polygon = polygon;
+		collectInformationOfPolygon(sizeOfObstacleCorners);
 	}
 	
-	public PolygonSplitter(Polygon[] polygon) {
-		collectInformationOfPolygon(polygon, 0);
+	public Terrain(Polygon[] polygon) {
+		this.polygon = polygon;
+		collectInformationOfPolygon(0);
 	}
 	
-	private void collectInformationOfPolygon(Polygon[] polygon, float sizeOfObstacleCorners) {
+	private void collectInformationOfPolygon(float sizeOfObstacleCorners) {
 		int size = countPolygonPoints(polygon);
 
 		this.points = new Point2D[size];
@@ -75,4 +78,14 @@ public class PolygonSplitter {
 	public Rectangle2D[] getCorners() {
 		return corners;
 	}
+	
+	public Boolean isInsideHere(Point2D point) {
+		for (int i = 0; i < polygon.length; i++) {
+			if (polygon[i].contains(point)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 }

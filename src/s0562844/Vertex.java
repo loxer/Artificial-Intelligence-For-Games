@@ -45,7 +45,7 @@ public class Vertex {
 	public Vertex getConnectedPoint(int index) {
 		return connectedPoints[index];
 	}
-
+	
 	public Line2D[] getEdges() {
 		return edges;
 	}
