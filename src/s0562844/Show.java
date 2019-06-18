@@ -11,8 +11,8 @@ import org.lwjgl.util.vector.Vector2f;
 import lenz.htw.ai4g.ai.Info;
 
 public class Show {
-	
-	public Show (Info info) {		
+
+	public Show(Info info) {
 	}
 
 	public static void expensivePoints(ArrayList<Point2D> expensivePoints) {
@@ -27,7 +27,7 @@ public class Show {
 			GL11.glEnd();
 		}
 	}
-	
+
 	public static void carOrientationVector(Vector2f carPos, Vector2f carOrientationVector) {
 		GL11.glBegin(GL11.GL_LINES);
 		GL11.glColor3d(1, 0, 1);
@@ -35,7 +35,7 @@ public class Show {
 		GL11.glVertex2d(carOrientationVector.getX(), carOrientationVector.getY());
 		GL11.glEnd();
 	}
-	
+
 	public static void route(Vertex[] route) {
 		int colour;
 		if (route.length - 1 == 0) {
@@ -53,7 +53,7 @@ public class Show {
 			}
 		}
 	}
-	
+
 	public static void helperPoints(Vertex vertices[]) {
 		for (int i = 0; i < vertices.length; i++) {
 			GL11.glBegin(GL11.GL_LINES);
@@ -64,7 +64,7 @@ public class Show {
 			GL11.glVertex2d(vertices[i].getLocation().getX() + 2, vertices[i].getLocation().getY() + 2);
 			GL11.glEnd();
 		}
-	}	
+	}
 
 	public static void lineToCheckpoint(Vector2f carPos, double currentCheckpointX, double currentCheckpointY) {
 		GL11.glBegin(GL11.GL_LINES);
@@ -73,7 +73,7 @@ public class Show {
 		GL11.glVertex2d(currentCheckpointX, currentCheckpointY);
 		GL11.glEnd();
 	}
-	
+
 	public static void lineToDestination(Vector2f carPos, Vertex currentDrivingDestination) {
 		GL11.glBegin(GL11.GL_LINES);
 		GL11.glColor3d(0, 0, 1);
@@ -81,7 +81,7 @@ public class Show {
 		GL11.glVertex2d(currentDrivingDestination.getLocation().getX(), currentDrivingDestination.getLocation().getY());
 		GL11.glEnd();
 	}
-	
+
 	public static void obstacleCorners(Rectangle2D[] obstacleCorners, float sizeOfObstacleCorners) {
 		for (int i = 0; i < obstacleCorners.length; i++) {
 			GL11.glBegin(GL11.GL_LINES);
@@ -131,25 +131,33 @@ public class Show {
 			GL11.glBegin(GL11.GL_LINES);
 			GL11.glColor3d(1, 0, 1);
 			GL11.glVertex2d(vertex.getLocation().getX(), vertex.getLocation().getY());
-			GL11.glVertex2d(vertex.getConnectedPoint(i).getLocation().getX(), vertex.getConnectedPoint(i).getLocation().getY());
+			GL11.glVertex2d(vertex.getConnectedPoint(i).getLocation().getX(),
+					vertex.getConnectedPoint(i).getLocation().getY());
 			GL11.glEnd();
 		}
-	}	
+	}
 
+	public static void printLines(Line2D[] lines) {
+		for (int i = 0; i < lines.length; i++) {
+			double length = Point2D.distanceSq(lines[i].getX1(), lines[i].getY1(), lines[i].getX2(), lines[i].getY2());
+			GL11.glBegin(GL11.GL_LINES);
+			GL11.glColor3d(1, 0.55, 0.12);
+			GL11.glVertex2d(lines[i].getX1(), lines[i].getY1());
+			GL11.glVertex2d(lines[i].getX2(), lines[i].getY2());
+			GL11.glEnd();
+		}
+	}
 
+	//
+	// public static void showAvoidingVector(float x, float y) {
+	// GL11.glBegin(GL11.GL_LINES);
+	// GL11.glColor3d(1, 1, 0);
+	// GL11.glVertex2d(carPos.getX(), carPos.getY());
+	// GL11.glVertex2d(x, y);
+	// GL11.glEnd();
+	//
+	// // info.getTrack().getObstacles()
+	// // Vector2f.
+	// }
 
-
-
-//
-//	public static void showAvoidingVector(float x, float y) {
-//		GL11.glBegin(GL11.GL_LINES);
-//		GL11.glColor3d(1, 1, 0);
-//		GL11.glVertex2d(carPos.getX(), carPos.getY());
-//		GL11.glVertex2d(x, y);
-//		GL11.glEnd();
-//
-//		// info.getTrack().getObstacles()
-//		// Vector2f.
-//	}
-	
 }

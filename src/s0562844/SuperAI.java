@@ -68,13 +68,22 @@ public class SuperAI extends AI {
 	private int height = info.getTrack().getHeight();
 	private float orientationAngleWorld;
 	private float destinationAngleWorld;
-	private Polygon[] obstacles = info.getTrack().getObstacles();
+
 	private int amountOfObstaclePoints = 0;
+
+	private Boolean newCheckpoint = true;
+	private int archivedCheckpoints = 0;
+
+	// Polygon Information
+	private Polygon[] obstaclesPolygon = info.getTrack().getObstacles();
 	private Point2D[] obstaclePoints;
 	private Line2D[] obstacleLines;
 	private Rectangle2D[] obstacleCorners;
-	private Boolean newCheckpoint = true;
-	private int archivedCheckpoints = 0;
+	private Point2D[] fastPoints;
+	private Line2D[] fastLines;
+	private Point2D[] slowPoints;
+	private Line2D[] slowLines;
+	private Rectangle2D[] slowCorners;
 
 	// Relevant Stuff for Graphs
 	private Boolean directConnection = false;
@@ -128,12 +137,13 @@ public class SuperAI extends AI {
 	}
 
 	private void doThingsFirst() {
-		amountOfObstaclePoints = countPolygonPoints(obstacles);
+		amountOfObstaclePoints = PolygonSplitter.countPolygonPoints(obstaclesPolygon);
 		calculateSizeOfObstacleCorners();
 	}
 
 	private void doThingsOnce() {
-		collectObstaclesInformation();
+		// collectObstaclesInformation();
+		collectInformationFromPolygons();
 		fillHelperPositions();
 		findConnectingPoints();
 	}
@@ -141,14 +151,6 @@ public class SuperAI extends AI {
 	private void prepareStart() {
 		setCarAndGoalVertices();
 		dijkstra(currentPosition);
-	}
-
-	private int countPolygonPoints(Polygon[] polygon) {
-		int numberOfPoints = 0;
-		for (int i = 0; i < polygon.length; i++) {
-			numberOfPoints += polygon[i].xpoints.length;
-		}
-		return numberOfPoints;
 	}
 
 	private void calculateSizeOfObstacleCorners() {
@@ -159,51 +161,37 @@ public class SuperAI extends AI {
 		}
 	}
 
-	private void collectObstaclesInformation() {
-		obstaclePoints = new Point2D[amountOfObstaclePoints];
-		obstacleLines = new Line2D[amountOfObstaclePoints];
-		this.obstacleCorners = new Rectangle2D[amountOfObstaclePoints];		
+	private void collectInformationFromPolygons() {
+		PolygonSplitter obstacles = new PolygonSplitter(obstaclesPolygon, sizeOfObstacleCorners);
+		this.obstaclePoints = obstacles.getPoints();
+		this.obstacleLines = obstacles.getLines();
+		this.obstacleCorners = obstacles.getCorners();
 
-		double halfRectangle = sizeOfObstacleCorners / 2;
-		int pos = 0;
+		PolygonSplitter fastZones = new PolygonSplitter(obstaclesPolygon);
+		this.fastPoints = fastZones.getPoints();
+		this.fastLines = fastZones.getLines();
 
-		for (int i = 0; i < obstacles.length; i++) {
-			int numberOfObstaclePoints = obstacles[i].xpoints.length;
+		PolygonSplitter slowZones = new PolygonSplitter(obstaclesPolygon);
+		this.slowPoints = slowZones.getPoints();
+		this.slowLines = slowZones.getLines();
+		this.slowCorners = slowZones.getCorners();
 
-			for (int j = 1; j < numberOfObstaclePoints; j++) {
-
-				obstaclePoints[pos] = new Point2D.Float(obstacles[i].xpoints[j - 1], obstacles[i].ypoints[j - 1]);
-				obstacleLines[pos] = new Line2D.Float(obstacles[i].xpoints[j - 1], obstacles[i].ypoints[j - 1],
-						obstacles[i].xpoints[j], obstacles[i].ypoints[j]);
-				obstacleCorners[pos] = new Rectangle2D.Double(obstaclePoints[pos].getX() - halfRectangle,
-						obstaclePoints[pos].getY() - halfRectangle, sizeOfObstacleCorners, sizeOfObstacleCorners);
-				pos++;
-			}
-			
-			// connect the end with the beginning
-			obstacleLines[pos] = new Line2D.Float(obstacles[i].xpoints[numberOfObstaclePoints - 1],
-					obstacles[i].ypoints[numberOfObstaclePoints - 1], obstacles[i].xpoints[0],
-					obstacles[i].ypoints[0]);
-
-			// add the first point
-			obstaclePoints[pos] = new Point2D.Float(obstacles[i].xpoints[numberOfObstaclePoints - 1],
-					obstacles[i].ypoints[numberOfObstaclePoints - 1]);
-			
-			obstacleCorners[pos] = new Rectangle2D.Double(obstaclePoints[pos].getX() - halfRectangle,
-					obstaclePoints[pos].getY() - halfRectangle, sizeOfObstacleCorners, sizeOfObstacleCorners);
-			
-			pos++;
-		}
 	}
 
-	private void collectFastZonesInformation() {
-		Polygon[] fastZones = info.getTrack().getFastZones();
-//		int numberOfFastZones = countPolygonPoints(fastZones);
-		
-		ArrayList<Point2D> fastZonesList = new ArrayList<Point2D>();
-
-		
-		
+	private void printLength() {
+		int counter = 0; 
+		for (int i = 0; i < slowLines.length; i++) {
+			double length = Point2D.distanceSq(slowLines[i].getX1(), slowLines[i].getY1(), slowLines[i].getX2(),
+					slowLines[i].getY2());
+			if (length == 10000.0) {
+				counter++;
+				System.out.println(slowLines[i].getX1() + "/" + slowLines[i].getY1() + " -> " + slowLines[i].getX2() + "/" + slowLines[i].getY2());
+				System.out.println(length);
+				
+			}
+		}
+		System.out.println(counter);
+		System.out.println();
 	}
 
 	private void fillHelperPositions() {
@@ -670,8 +658,8 @@ public class SuperAI extends AI {
 	}
 
 	private Boolean isInsideObstacle(Point2D point) {
-		for (int i = 0; i < obstacles.length; i++) {
-			if (obstacles[i].contains(point)) {
+		for (int i = 0; i < obstaclesPolygon.length; i++) {
+			if (obstaclesPolygon[i].contains(point)) {
 				return true;
 			}
 		}
@@ -820,7 +808,7 @@ public class SuperAI extends AI {
 		// probablyStucked();
 		if (!(resetCounter > 0
 				|| ((archivedCheckpoints == 9) && drivingDistanceToCheckpoint < 1000 && frames % 20 == 0))
-				|| !probablyStucked())
+		/* || !probablyStucked() */)
 			return;
 		System.out.println("---Driving Information---");
 		System.out.println("carPos: " + carPos);
