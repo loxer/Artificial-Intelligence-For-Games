@@ -420,7 +420,7 @@ public class SuperAI extends AI {
 
 		Line2D connection = new Line2D.Float(carLocation, route[currentRoutePoint].getLocation());
 
-		if (obstacleBetween(connection) /*|| !slowZones.isSomethingInTheWay(connection) */|| checkForNewRoute) {
+		if (obstacleBetween(connection) /* || !slowZones.isSomethingInTheWay(connection) */ || checkForNewRoute) {
 			prepareDijkstra();
 			resetCounter = 0;
 			pointsOfFailure.clear();
@@ -430,12 +430,14 @@ public class SuperAI extends AI {
 		if (route.length > currentRoutePoint + 1) {
 			Point2D theNextButOneRoutePoint = route[currentRoutePoint + 1].getLocation();
 			connection.setLine(carLocation, theNextButOneRoutePoint);
-			if (!obstacleBetween(connection) && (!slowZones.isSomethingInTheWay(connection) || slowZones.isInsideHere(theNextButOneRoutePoint))) {
-//				if (/* slowZones.isInsideHere(carLocation) || */slowZones.isInsideHere(theNextButOneRoutePoint)
-//						|| drivingDistanceToRoutePoint < DISTANCE_FOR_NEW_ROUTE_CHECK) {
+			if (!obstacleBetween(connection)) {
+				if (!slowZones.isSomethingInTheWay(connection) || slowZones.isInsideHere(theNextButOneRoutePoint)
+						|| !(fastZones.isInsideHere(route[currentRoutePoint].getLocation()) // does not work properly yet, since it must be connected with logical AND
+								&& fastZones.isInsideHere(theNextButOneRoutePoint))
+						|| drivingDistanceToRoutePoint < DISTANCE_FOR_NEW_ROUTE_CHECK) {
 					currentRoutePoint++;
 					updateCurrentRoutePoint(route[currentRoutePoint]);
-//				}
+				}
 			}
 		}
 	}
@@ -754,11 +756,11 @@ public class SuperAI extends AI {
 
 		// Print stuff
 		if (frames % 30 == 0) {
-			printDrivingInformation();
+//			printDrivingInformation();
 			// printTestMethods();
 			// printObstacleCoordinates();
 			// printObstacleLines();
-			printDijkstra();
+//			printDijkstra();
 		}
 	}
 
