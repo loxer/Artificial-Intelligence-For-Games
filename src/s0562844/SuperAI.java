@@ -32,7 +32,7 @@ public class SuperAI extends AI {
 	private static final int MAXIMUM_DISTANCE_BETWEEN_POINTS = 5000;
 	private static final int CLOSEST_RADIUS_TO_OBSTACLE = 120;
 
-	private static final int DISTANCE_FOR_NEW_ROUTE_CHECK = 1000;
+	private static final int DISTANCE_FOR_NEW_ROUTE_CHECK = 2500;
 
 	private static final int DISTANCE_MINIMUM_FOR_EXTRA_COSTS = 1300;
 	private static final int HIGHEST_EXTRA_COSTS = 7000;
@@ -44,14 +44,12 @@ public class SuperAI extends AI {
 
 	// Car Information Variables
 	private float speed = 0;
-	private float valueOfTooMuchDrift = 0;
 	private float desiredSpeed = 0;
 	private float drivingSpeed = 0.5F;
 	private float rotatingSpeed = 0.1F;
 	private float destinationAngleCar = 0;
 	private float drivingDistanceToRoutePoint = 0;
 	private float drivingDistanceToCheckpoint = 0;
-	private float accel; // not in use yet
 	private Boolean resetDestination = true;
 	private Boolean keepTurning = true;
 	private Boolean destinationIsLeft = true;
@@ -82,11 +80,6 @@ public class SuperAI extends AI {
 	private Point2D[] obstaclePoints;
 	private Line2D[] obstacleLines;
 	private Rectangle2D[] obstacleCorners;
-	private Point2D[] fastPoints;
-	private Line2D[] fastLines;
-	private Point2D[] slowPoints;
-	private Line2D[] slowLines;
-	private Rectangle2D[] slowCorners;
 
 	// Relevant Stuff for Graphs
 	private Boolean directConnection = false;
@@ -108,6 +101,7 @@ public class SuperAI extends AI {
 	private static final int DISTANCE_MINIMUM_FOR_PROBLEM_POINTS = 5000;
 	private static final int SLOWING_RADIUS_AT_FAILURE_POINTS = 1000;
 
+	private static final int SIZE_OF_SLOW_ZONE_CORNERS = 10;
 	private int distanceMinimumForProblemPoints = DISTANCE_MINIMUM_FOR_PROBLEM_POINTS;
 	private float sizeOfObstacleCorners;
 
@@ -170,13 +164,7 @@ public class SuperAI extends AI {
 		this.obstacleCorners = obstacles.getCorners();
 
 		this.fastZones = new Terrain(info.getTrack().getFastZones());
-		this.fastPoints = fastZones.getPoints();
-		this.fastLines = fastZones.getLines();
-
-		this.slowZones = new Terrain(info.getTrack().getSlowZones());
-		this.slowPoints = slowZones.getPoints();
-		this.slowLines = slowZones.getLines();
-		this.slowCorners = slowZones.getCorners();
+		this.slowZones = new Terrain(info.getTrack().getSlowZones(), SIZE_OF_SLOW_ZONE_CORNERS);
 
 	}
 
@@ -368,14 +356,6 @@ public class SuperAI extends AI {
 
 	}
 
-	private void checkValues() {
-		System.out.println("getVelocity: " + info.getVelocity());
-		if (info.getVelocity().x == 28) {
-			System.out.println("SpeedTime: " + seconds);
-
-		}
-	}
-
 	private void setTimer() {
 		frames++;
 		seconds = (frames / 30) % 60;
@@ -387,9 +367,9 @@ public class SuperAI extends AI {
 		drivingDistanceToRoutePoint = calculateDrivingDistance(currentDrivingDestination);
 		drivingDistanceToCheckpoint = calculateDrivingDistance(currentCheckpoint);
 
-		if (drivingDistanceToRoutePoint < DISTANCE_FOR_NEW_ROUTE_CHECK && !directConnection) {
-			checkForNewRoute = true;
-		}
+		// if (drivingDistanceToRoutePoint < DISTANCE_FOR_NEW_ROUTE_CHECK) {
+		// checkForNewRoute = true;
+		// }
 	}
 
 	private void updateCurrentRoutePoint(Vertex newDestination) {
@@ -397,11 +377,6 @@ public class SuperAI extends AI {
 			currentDrivingDestination = newDestination;
 			newRoutePoint = true;
 		}
-	}
-
-	private Line2D connectionToCheckpoint() {
-		setUpLocation();
-		return new Line2D.Float(carLocation, currentCheckpoint.getLocation());
 	}
 
 	private void setUpLocation() {
@@ -435,30 +410,17 @@ public class SuperAI extends AI {
 	}
 
 	private void lookForRoute() {
-
-//		Line2D connection = new Line2D.Float(carLocation, currentCheckpoint.getLocation());
-//
-//		if (!obstacleBetween(connection)) {
-//			directConnection = true;
-//			updateCurrentRoutePoint(currentCheckpoint);
-//		} else {
-//			directConnection = false;
-//		}
-
 		if (newCheckpoint()) {
 			for (int i = 0; i < vertices.length; i++) {
 				vertices[i].resetExtraCosts();
 			}
 			calculateSizeOfObstacleCorners();
-//			this.obstacleCorners = Redo.resizeObstacleCorners(obstaclePoints, sizeOfObstacleCorners); // apparently gets
-																									// even without
-																										// failures
 			checkForNewRoute = true;
 		}
 
 		Line2D connection = new Line2D.Float(carLocation, route[currentRoutePoint].getLocation());
 
-		if (obstacleBetween(connection) || checkForNewRoute) {
+		if (obstacleBetween(connection) /*|| !slowZones.isSomethingInTheWay(connection) */|| checkForNewRoute) {
 			prepareDijkstra();
 			resetCounter = 0;
 			pointsOfFailure.clear();
@@ -466,10 +428,14 @@ public class SuperAI extends AI {
 		}
 
 		if (route.length > currentRoutePoint + 1) {
-			connection.setLine(carLocation, route[currentRoutePoint + 1].getLocation());
-			if (!obstacleBetween(connection)) {
-				currentRoutePoint++;
-				updateCurrentRoutePoint(route[currentRoutePoint]);
+			Point2D theNextButOneRoutePoint = route[currentRoutePoint + 1].getLocation();
+			connection.setLine(carLocation, theNextButOneRoutePoint);
+			if (!obstacleBetween(connection) && (!slowZones.isSomethingInTheWay(connection) || slowZones.isInsideHere(theNextButOneRoutePoint))) {
+//				if (/* slowZones.isInsideHere(carLocation) || */slowZones.isInsideHere(theNextButOneRoutePoint)
+//						|| drivingDistanceToRoutePoint < DISTANCE_FOR_NEW_ROUTE_CHECK) {
+					currentRoutePoint++;
+					updateCurrentRoutePoint(route[currentRoutePoint]);
+//				}
 			}
 		}
 	}
@@ -492,11 +458,6 @@ public class SuperAI extends AI {
 		findVerticesConnectedToThisVertex(currentCheckpoint);
 		findVerticesConnectedToThisVertex(currentPosition);
 
-//		Line2D connection = new Line2D.Float(currentCheckpoint.getLocation(), currentPosition.getLocation());
-//		if (!obstacleBetween(connection)) {
-//			currentCheckpoint.setEdgePointAndLength(connection, currentPosition, 0);
-//			currentPosition.setEdgePointAndLength(connection, currentCheckpoint, 0);
-//		}
 		currentCheckpoint.setReady(0);
 		currentPosition.setReady(0);
 	}
@@ -721,7 +682,6 @@ public class SuperAI extends AI {
 		int routePoints = routeBackwards.size();
 
 		if (routePoints < 2) { // no route found
-
 			routeBackwards.add(getRandomRoutePoint());
 			routePoints++;
 			checkForNewRoute = true;
@@ -740,9 +700,6 @@ public class SuperAI extends AI {
 	}
 
 	private Vertex getRandomRoutePoint() {
-
-		Point2D carLocation = new Point2D.Float((float) info.getX(), (float) info.getY());
-
 		for (int i = 0; i < vertices.length; i++) {
 			Line2D connection = new Line2D.Float(carLocation, vertices[i].getLocation());
 			if (!obstacleBetween(connection)) {
@@ -851,7 +808,7 @@ public class SuperAI extends AI {
 		System.out.println("getMaxBackwardVelocity: " + info.getMaxBackwardVelocity());
 		System.out.println("getMaxAbsoluteAcceleration: " + info.getMaxAbsoluteAcceleration());
 		System.out.println("getMaxAbsoluteAngularAcceleration: " + info.getMaxAbsoluteAngularAcceleration());
-		System.out.println("getMaxAbsoluteAngularVelocity: " + info.getMaxAbsoluteAngularVelocity());		
+		System.out.println("getMaxAbsoluteAngularVelocity: " + info.getMaxAbsoluteAngularVelocity());
 		System.out.println("-----------------");
 		System.out.println();
 	}
@@ -913,9 +870,14 @@ public class SuperAI extends AI {
 	}
 
 	private void printDijkstra() {
-		System.out.println("---Dijkstra---");
+		System.out.println("---Dijkstra--- " + "Counter: " + dijkstraCounter);
 		for (int i = 0; i < route.length; i++) {
-			System.out.println("Routepoint: " + (int) route[i].getLocation().getX() + "/" + (int) route[i].getLocation().getY() + "   || Distance: " + route[i].getCosts());
+			if (currentRoutePoint == i) {
+				System.out.println("CarPosition: " + (int) carLocation.getX() + "/" + (int) carLocation.getY()
+						+ "  || Distance: " + (int) drivingDistanceToRoutePoint);
+			}
+			System.out.println("Routepoint: " + (int) route[i].getLocation().getX() + "/"
+					+ (int) route[i].getLocation().getY() + "   || Distance: " + (int) route[i].getCosts());
 		}
 		System.out.println("-----------------");
 		System.out.println();

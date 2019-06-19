@@ -13,9 +13,9 @@ public class Terrain {
 	Line2D[] lines;
 	Rectangle2D[] corners;
 
-	public Terrain(Polygon[] polygon, float sizeOfObstacleCorners) {
+	public Terrain(Polygon[] polygon, float sizeOfCorners) {
 		this.polygon = polygon;
-		collectInformationOfPolygon(sizeOfObstacleCorners);
+		collectInformationOfPolygon(sizeOfCorners);
 	}
 
 	public Terrain(Polygon[] polygon) {
@@ -23,14 +23,14 @@ public class Terrain {
 		collectInformationOfPolygon(0);
 	}
 
-	private void collectInformationOfPolygon(float sizeOfObstacleCorners) {
+	private void collectInformationOfPolygon(float sizeOfCorners) {
 		int size = countPolygonPoints(polygon);
 
 		this.points = new Point2D[size];
 		this.lines = new Line2D[size];
 		this.corners = new Rectangle2D[size];
 
-		double halfRectangle = sizeOfObstacleCorners / 2;
+		double halfRectangle = sizeOfCorners / 2;
 		int pos = 0;
 
 		for (int i = 0; i < polygon.length; i++) {
@@ -42,7 +42,7 @@ public class Terrain {
 				lines[pos] = new Line2D.Float(polygon[i].xpoints[j - 1], polygon[i].ypoints[j - 1],
 						polygon[i].xpoints[j], polygon[i].ypoints[j]);
 				corners[pos] = new Rectangle2D.Double(points[pos].getX() - halfRectangle,
-						points[pos].getY() - halfRectangle, sizeOfObstacleCorners, sizeOfObstacleCorners);
+						points[pos].getY() - halfRectangle, sizeOfCorners, sizeOfCorners);
 				pos++;
 			}
 
@@ -55,7 +55,7 @@ public class Terrain {
 					polygon[i].ypoints[numberOfPoints - 1]);
 
 			corners[pos] = new Rectangle2D.Double(points[pos].getX() - halfRectangle,
-					points[pos].getY() - halfRectangle, sizeOfObstacleCorners, sizeOfObstacleCorners);
+					points[pos].getY() - halfRectangle, sizeOfCorners, sizeOfCorners);
 
 			pos++;
 		}
@@ -90,4 +90,12 @@ public class Terrain {
 		return false;
 	}
 
+	public Boolean isSomethingInTheWay(Line2D line) {
+		for (int i = 0; i < lines.length; i++) {
+			if (line.intersectsLine(lines[i]) || corners[i].intersectsLine(line)) {
+				return true;
+			}
+		}
+		return false;
+	}
 }
