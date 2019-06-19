@@ -167,7 +167,8 @@ public class Show {
 			GL11.glVertex2d(lines[i].getX2(), lines[i].getY2());
 			GL11.glEnd();
 		}
-	}
+	}	
+
 
 	//
 	// public static void showAvoidingVector(float x, float y) {
