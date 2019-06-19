@@ -137,14 +137,28 @@ public class Show {
 		}
 	}
 
-	public static void line(Line2D line) {
-			GL11.glBegin(GL11.GL_LINES);
-			GL11.glColor3d(1, 0, 1);
-			GL11.glVertex2d(line.getX1(), line.getY1());
-			GL11.glVertex2d(line.getX2(), line.getY2());
-			GL11.glEnd();
+	public static void point(int x, int y) {
+		int size = 50;
+		double r = Math.random();
+		double g = Math.random();
+		double b = Math.random();
+		GL11.glBegin(GL11.GL_LINES);
+		GL11.glColor3d(r, g, b);
+		GL11.glVertex2i(x - size, y + size);
+		GL11.glVertex2i(x + size, y - size);
+		GL11.glVertex2i(x - size, y - size);
+		GL11.glVertex2i(x + size, y + size);
+		GL11.glEnd();
 	}
-	
+
+	public static void line(Line2D line) {
+		GL11.glBegin(GL11.GL_LINES);
+		GL11.glColor3d(1, 0, 1);
+		GL11.glVertex2d(line.getX1(), line.getY1());
+		GL11.glVertex2d(line.getX2(), line.getY2());
+		GL11.glEnd();
+	}
+
 	public static void lines(Line2D[] lines) {
 		for (int i = 0; i < lines.length; i++) {
 			GL11.glBegin(GL11.GL_LINES);

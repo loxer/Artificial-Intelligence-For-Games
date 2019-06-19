@@ -10,6 +10,7 @@ public class Vertex {
 
 	private ArrayList<Vertex> connectedPointsList = new ArrayList<Vertex>();
 	private ArrayList<Line2D> edgesList = new ArrayList<Line2D>();
+	private ArrayList<Float> lengthsList = new ArrayList<Float>();
 	private Vertex[] connectedPoints;
 	private Line2D[] edges;
 	private float[] lengths;
@@ -50,9 +51,10 @@ public class Vertex {
 		return edges;
 	}
 
-	public void setEdgeAndPoint(Line2D edge, Vertex point) {
+	public void setEdgePointAndLength(Line2D edge, Vertex point, float length) {
 		edgesList.add(edge);
 		connectedPointsList.add(point);
+		lengthsList.add(length);
 	}
 
 	public int numberOfEdges() {
@@ -67,7 +69,7 @@ public class Vertex {
 		for (int i = 0; i < connectedPoints.length; i++) {
 			connectedPoints[i] = connectedPointsList.get(i);
 			edges[i] = edgesList.get(i);
-			lengths[i] = (float) location.distanceSq(connectedPoints[i].getLocation()) + extraDistance + extraCosts;
+			lengths[i] = lengthsList.get(i) + extraDistance + extraCosts;
 		}
 	}
 

@@ -26,7 +26,7 @@ public class SuperAI extends AI {
 	private static final float SLOWING_RADIUS = 100;
 	private static final float TURNING_TOLERANCE = 0.005F;
 
-	private static final float LENGTH_OF_carOrientationVector = 100;
+	private static final float LENGTH_OF_CAR_ORIENTATION_VECTOR = 100;
 
 	private static final int NUMBER_OF_HELPER_COORDINATES = 729;
 	private static final int MAXIMUM_DISTANCE_BETWEEN_POINTS = 5000;
@@ -94,9 +94,8 @@ public class SuperAI extends AI {
 	private Boolean checkForNewRoute = false;
 	private Boolean newRoutePoint = true;
 	private int currentRoutePoint = 1;
-	private int numberOfPotentialPoints;
 	private Point2D[] helperCoordinates;
-	private Vertex[] vertices = new Vertex[numberOfPotentialPoints];
+	private Vertex[] vertices;
 	private Vertex currentDrivingDestination;
 	private Vertex currentCheckpoint;
 	private Vertex currentPosition = new Vertex();
@@ -200,7 +199,6 @@ public class SuperAI extends AI {
 
 	private void fillHelperPositions() {
 		int divider = (int) Math.sqrt(NUMBER_OF_HELPER_COORDINATES);
-		numberOfPotentialPoints = divider * divider;
 
 		ArrayList<Point2D> helperCoordinatesList = new ArrayList<Point2D>();
 
@@ -217,6 +215,8 @@ public class SuperAI extends AI {
 			}
 		}
 
+		int numberOfStandardRoutePoints = helperCoordinatesList.size();
+
 		helperCoordinates = new Point2D[helperCoordinatesList.size()];
 		vertices = new Vertex[helperCoordinates.length];
 
@@ -229,16 +229,25 @@ public class SuperAI extends AI {
 	private void findConnectingPoints() {
 		for (int i = 0; i < vertices.length; i++) {
 			for (int j = i + 1; j < vertices.length; j++) {
-				if (helperCoordinates[i].distanceSq(helperCoordinates[j]) < MAXIMUM_DISTANCE_BETWEEN_POINTS) {
 
-					if (!pointsInDifferentZones(helperCoordinates[i], helperCoordinates[j])) {
+				float distance = (float) helperCoordinates[i].distanceSq(helperCoordinates[j]);
+				Line2D connection = new Line2D.Float(helperCoordinates[i], helperCoordinates[j]);
+				if (distance < MAXIMUM_DISTANCE_BETWEEN_POINTS && !obstacleBetween(connection)) {
 
-						Line2D connection = new Line2D.Float(helperCoordinates[i], helperCoordinates[j]);
-						if (!obstacleBetween(connection)) {
-							vertices[i].setEdgeAndPoint(connection, vertices[j]);
-							vertices[j].setEdgeAndPoint(connection, vertices[i]);
-						}
+					int pointsLocationCase = checkSituation(helperCoordinates[i], helperCoordinates[j]);
+					if (pointsLocationCase == 1) { // slow Terrain
+						distance *= 4.5;
+					} else if (pointsLocationCase == 2) { // fast Terrain
+						distance *= 0.2;
+					} else if (pointsLocationCase == 3) {
+						distance *= 3.0;
+					} else if (pointsLocationCase == 4) {
+						distance *= 0.35;
 					}
+
+					vertices[i].setEdgePointAndLength(connection, vertices[j], distance);
+					vertices[j].setEdgePointAndLength(connection, vertices[i], distance);
+
 				}
 			}
 			vertices[i].setReady(getExtraCosts(vertices[i].getLocation()));
@@ -247,26 +256,54 @@ public class SuperAI extends AI {
 		printNumberOfConnections();
 	}
 
-	private Boolean pointsInDifferentZones(Point2D point1, Point2D point2) {
+	private int checkSituation(Point2D point1, Point2D point2) {
+		// -1: Something was wrong
+		/// 0: Both are in the standard Terrain
+		/// 1: Both are in the slow Terrain
+		/// 2: Both are in the fast Terrain
+		/// 3: One is in standard, the other in slow
+		/// 4: One is in standard, the other in fast
+		/// 5: One is in slow, the other in fast
+
 		Boolean pointOneInsideSlowZone = slowZones.isInsideHere(point1);
 		Boolean pointTwoInsideSlowZone = slowZones.isInsideHere(point2);
-		
-		if (pointOneInsideSlowZone ^ pointTwoInsideSlowZone) {
-			return true;
-		}
-		
 		Boolean pointOneInsideFastZone = fastZones.isInsideHere(point1);
 		Boolean pointTwoInsideFastZone = fastZones.isInsideHere(point2);
 
-		if (pointOneInsideFastZone ^ pointTwoInsideFastZone) {
-			return true;
+		// if (pointOneInsideSlowZone ^ pointTwoInsideSlowZone) {
+		// return -1;
+		// } else if (pointOneInsideSlowZone && pointTwoInsideSlowZone) {
+		// return 1;
+		// }
+		//
+		// if (pointOneInsideFastZone ^ pointTwoInsideFastZone) {
+		// return -1;
+		// } else if (pointOneInsideFastZone && pointTwoInsideFastZone) {
+		// return 2;
+		// }
+		//
+		// if (pointOneInsideSlowZone && pointTwoInsideFastZone ||
+		// pointTwoInsideSlowZone && pointTwoInsideFastZone) {
+		// return -1;
+		// }
+
+		if (!pointOneInsideSlowZone && !pointTwoInsideSlowZone && !pointOneInsideFastZone && !pointTwoInsideFastZone) {
+			return 0;
+		} else if (pointOneInsideSlowZone && pointTwoInsideSlowZone) {
+			return 1;
+		} else if (pointOneInsideSlowZone && pointTwoInsideSlowZone) {
+			return 2;
+		} else if (pointOneInsideSlowZone ^ pointTwoInsideSlowZone && !pointOneInsideFastZone
+				&& !pointTwoInsideFastZone) {
+			return 3;
+		} else if (!pointOneInsideSlowZone && !pointTwoInsideSlowZone
+				&& pointOneInsideFastZone ^ pointTwoInsideFastZone) {
+			return 4;
+		} else if (pointOneInsideSlowZone ^ pointTwoInsideSlowZone && pointOneInsideFastZone ^ pointTwoInsideFastZone) {
+			return 5;
 		}
 
-		if (pointOneInsideSlowZone && pointTwoInsideFastZone || pointTwoInsideSlowZone && pointTwoInsideFastZone) {			
-			return true;
-		}
-
-		return false;
+		return -1;
 	}
 
 	private float getExtraCosts(Point2D point) {
@@ -494,8 +531,8 @@ public class SuperAI extends AI {
 
 		Line2D connection = new Line2D.Float(currentCheckpoint.getLocation(), currentPosition.getLocation());
 		if (!obstacleBetween(connection)) {
-			currentCheckpoint.setEdgeAndPoint(connection, currentPosition);
-			currentPosition.setEdgeAndPoint(connection, currentCheckpoint);
+			currentCheckpoint.setEdgePointAndLength(connection, currentPosition, 0);
+			currentPosition.setEdgePointAndLength(connection, currentCheckpoint, 0);
 		}
 		currentCheckpoint.setReady(0);
 		currentPosition.setReady(0);
@@ -510,10 +547,11 @@ public class SuperAI extends AI {
 	private void findVerticesConnectedToThisVertex(Vertex vertex) {
 		int doubleDistanceForConnections = MAXIMUM_DISTANCE_BETWEEN_POINTS * 2;
 		for (int i = 0; i < vertices.length; i++) {
-			if (vertex.getLocation().distanceSq(vertices[i].getLocation()) < doubleDistanceForConnections) {
+			float distance = (float) vertex.getLocation().distanceSq(vertices[i].getLocation());
+			if (distance < doubleDistanceForConnections) {
 				Line2D connection = new Line2D.Float(vertex.getLocation(), vertices[i].getLocation());
 				if (!obstacleBetween(connection)) {
-					vertex.setEdgeAndPoint(connection, vertices[i]);
+					vertex.setEdgePointAndLength(connection, vertices[i], distance);
 				}
 			}
 		}
@@ -643,8 +681,8 @@ public class SuperAI extends AI {
 	}
 
 	private void setCarOrientationVector() {
-		carOrientationVector.setX(carOrientationX * LENGTH_OF_carOrientationVector + carPos.getX());
-		carOrientationVector.setY(carOrientationY * LENGTH_OF_carOrientationVector + carPos.getY());
+		carOrientationVector.setX(carOrientationX * LENGTH_OF_CAR_ORIENTATION_VECTOR + carPos.getX());
+		carOrientationVector.setY(carOrientationY * LENGTH_OF_CAR_ORIENTATION_VECTOR + carPos.getY());
 		carLine = new Line2D.Float(carPos.x, carPos.y, carOrientationVector.x, carOrientationVector.y);
 	}
 
@@ -652,8 +690,8 @@ public class SuperAI extends AI {
 		float carOrientationX = (float) Math.cos(angle);
 		float carOrientationY = (float) Math.sin(angle);
 
-		float x = (carOrientationX * LENGTH_OF_carOrientationVector + carPos.getX());
-		float y = (carOrientationY * LENGTH_OF_carOrientationVector + carPos.getY());
+		float x = (carOrientationX * LENGTH_OF_CAR_ORIENTATION_VECTOR + carPos.getX());
+		float y = (carOrientationY * LENGTH_OF_CAR_ORIENTATION_VECTOR + carPos.getY());
 		Line2D newLine = new Line2D.Float(carPos.x, carPos.y, x, y);
 		return newLine;
 	}
@@ -821,13 +859,15 @@ public class SuperAI extends AI {
 		Show.lineToCheckpoint(carPos, info.getCurrentCheckpoint().getX(), info.getCurrentCheckpoint().getY());
 		Show.lineToDestination(carPos, currentDrivingDestination);
 		Show.obstacleCorners(obstacleCorners, sizeOfObstacleCorners);
-		Show.aHelperPointsConnections(vertices);
+//		Show.aHelperPointsConnections(vertices);
+		// Show.point(500, 500);
 
-		for (int i = 0; i < vertices.length; i++) {
-			if (fastZones.isInsideHere(vertices[i].getLocation()) || slowZones.isInsideHere(vertices[i].getLocation())) {
-				Show.lines(vertices[i].getEdges());
-			}
-		}
+		// for (int i = 0; i < vertices.length; i++) {
+		// if (fastZones.isInsideHere(vertices[i].getLocation())
+		// || slowZones.isInsideHere(vertices[i].getLocation())) {
+		// Show.lines(vertices[i].getEdges());
+		// }
+		// }
 
 		// Show.lineOfFutureRoutePoint(route, currentRoutePoint);
 		// Show.nextLine(showLine);
