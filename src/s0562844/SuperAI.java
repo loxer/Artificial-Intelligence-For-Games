@@ -54,6 +54,7 @@ public class SuperAI extends AI {
 	private Boolean keepTurning = true;
 	private Boolean destinationIsLeft = true;
 	private Vector2f carPos = new Vector2f();
+	private float direction;
 
 	private float carOrientationX;
 	private float carOrientationY;
@@ -364,6 +365,7 @@ public class SuperAI extends AI {
 
 	private void calculateDistances() {
 		// directionVertex = calculateDirectionVector(destinationPos);
+		direction = 
 		drivingDistanceToRoutePoint = calculateDrivingDistance(currentDrivingDestination);
 		drivingDistanceToCheckpoint = calculateDrivingDistance(currentCheckpoint);
 
