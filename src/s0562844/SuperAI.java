@@ -32,7 +32,7 @@ public class SuperAI extends AI {
 	private static final int MAXIMUM_DISTANCE_BETWEEN_POINTS = 5000;
 	private static final int CLOSEST_RADIUS_TO_OBSTACLE = 120;
 
-	private static final int DISTANCE_FOR_NEW_ROUTE_CHECK = 2500;
+	private static final int DISTANCE_FOR_NEW_ROUTE_CHECK = 900;
 
 	private static final int DISTANCE_MINIMUM_FOR_EXTRA_COSTS = 1300;
 	private static final int HIGHEST_EXTRA_COSTS = 7000;
@@ -43,7 +43,7 @@ public class SuperAI extends AI {
 	// private static final float DISTANCE_REACHING_CHECK = 500;
 
 	// Car Information Variables
-	private float speed = 0;
+	private float speedSq = 0;
 	private float desiredSpeed = 0;
 	private float drivingSpeed = 0.5F;
 	private float rotatingSpeed = 0.1F;
@@ -54,12 +54,12 @@ public class SuperAI extends AI {
 	private Boolean keepTurning = true;
 	private Boolean destinationIsLeft = true;
 	private Vector2f carPos = new Vector2f();
-	private float direction;
+	private Vector2f routepointPos = new Vector2f();
+	private Vector2f directionVector = new Vector2f();
 
 	private float carOrientationX;
 	private float carOrientationY;
 	private Vector2f carOrientationVector = new Vector2f();
-	private Line2D carLine = new Line2D.Float();
 	private Point2D carLocation = new Point2D.Float(info.getX(), info.getY());
 
 	// Track Information Variables
@@ -135,7 +135,7 @@ public class SuperAI extends AI {
 
 	private void doThingsFirst() {
 		amountOfObstaclePoints = Terrain.countPolygonPoints(obstaclesPolygon);
-		calculateSizeOfObstacleCorners();
+		calculateSizeOfObstacleCorners();		
 	}
 
 	private void doThingsOnce() {
@@ -316,6 +316,7 @@ public class SuperAI extends AI {
 		calculateDistances();
 		calculateAngleToDestination();
 		calculateDestinationFromMyPerspective();
+		calculateDrivingSpeed();
 		// calculateDestinationFromMyPerspective2();
 		checkDirectionOfDestination();
 		setCarOrientation();
@@ -326,7 +327,7 @@ public class SuperAI extends AI {
 		// Driving methods
 		lookForRoute();
 		checkKeepTurning();
-		rotatingSpeed = RotatingAcceleration.calculate(destinationAngleCar, info.getAngularVelocity(), speed,
+		rotatingSpeed = RotatingAcceleration.calculate(destinationAngleCar, info.getAngularVelocity(), speedSq,
 				drivingDistanceToRoutePoint, drivingDistanceToCheckpoint, directConnection, resetCounter);
 		// align(drivingDistance);
 		// correctDrivingDirection();
@@ -335,9 +336,9 @@ public class SuperAI extends AI {
 		if (slowZones.isInsideHere(carLocation)) {
 			drivingSpeed = 1;
 		} else {
-			drivingSpeed = SpeedAcceleration.calculate(destinationAngleCar, info.getAngularVelocity(), speed,
+			drivingSpeed = SpeedAcceleration.calculate(destinationAngleCar, info.getAngularVelocity(), speedSq,
 					drivingDistanceToRoutePoint, drivingDistanceToCheckpoint, pointOfFailureIsClose(), directConnection,
-					resetCounter);
+					resetCounter, directionVector, info.getVelocity());
 		}
 		// float turningSpeed = 0;
 		//
@@ -356,16 +357,14 @@ public class SuperAI extends AI {
 		return new DriverAction(drivingSpeed, rotatingSpeed);
 
 	}
-
+	
 	private void setTimer() {
 		frames++;
 		seconds = (frames / 30) % 60;
 		minutes = (frames / 30) / 60;
 	}
 
-	private void calculateDistances() {
-		// directionVertex = calculateDirectionVector(destinationPos);
-		direction = 
+	private void calculateDistances() {				 
 		drivingDistanceToRoutePoint = calculateDrivingDistance(currentDrivingDestination);
 		drivingDistanceToCheckpoint = calculateDrivingDistance(currentCheckpoint);
 
@@ -377,18 +376,21 @@ public class SuperAI extends AI {
 	private void updateCurrentRoutePoint(Vertex newDestination) {
 		if (currentDrivingDestination != newDestination) {
 			currentDrivingDestination = newDestination;
+			routepointPos.set((float) newDestination.getLocation().getX(), (float) newDestination.getLocation().getY());
 			newRoutePoint = true;
 		}
 	}
 
 	private void setUpLocation() {
 		carLocation.setLocation(info.getX(), info.getY());
-		setCarPosition();
-	}
-
-	private void setCarPosition() {
 		carPos.set(info.getX(), info.getY());
+		
+		directionVector = calculateDirectionVector(routepointPos);		
 	}
+	
+	private Vector2f calculateDirectionVector(Vector2f currentDestination) {
+		return new Vector2f(currentDestination.x - carPos.x, currentDestination.y - carPos.y);
+}
 
 	private void checkForFailure() {
 		if (frames % 60 == 0) { // check each 2 seconds
@@ -416,8 +418,9 @@ public class SuperAI extends AI {
 			for (int i = 0; i < vertices.length; i++) {
 				vertices[i].resetExtraCosts();
 			}
-			calculateSizeOfObstacleCorners();
+//			calculateSizeOfObstacleCorners();
 			checkForNewRoute = true;
+			routepointPos.set(info.getCurrentCheckpoint().x, info.getCurrentCheckpoint().y);
 		}
 
 		Line2D connection = new Line2D.Float(carLocation, route[currentRoutePoint].getLocation());
@@ -425,7 +428,7 @@ public class SuperAI extends AI {
 		if (obstacleBetween(connection) /* || !slowZones.isSomethingInTheWay(connection) */ || checkForNewRoute) {
 			prepareDijkstra();
 			resetCounter = 0;
-			pointsOfFailure.clear();
+			pointsOfFailure.clear();			
 			return;
 		}
 
@@ -558,6 +561,10 @@ public class SuperAI extends AI {
 			destinationAngleCar = (float) (2 * Math.PI + destinationAngleCar);
 		}
 	}
+	
+	private void calculateDrivingSpeed() {
+		speedSq = info.getVelocity().x * info.getVelocity().x + info.getVelocity().y * info.getVelocity().y;
+	}	
 
 	private Boolean pointOfFailureIsClose() {
 		if (pointsOfFailure.isEmpty()) {
@@ -601,8 +608,7 @@ public class SuperAI extends AI {
 
 	private void setCarOrientationVector() {
 		carOrientationVector.setX(carOrientationX * LENGTH_OF_CAR_ORIENTATION_VECTOR + carPos.getX());
-		carOrientationVector.setY(carOrientationY * LENGTH_OF_CAR_ORIENTATION_VECTOR + carPos.getY());
-		carLine = new Line2D.Float(carPos.x, carPos.y, carOrientationVector.x, carOrientationVector.y);
+		carOrientationVector.setY(carOrientationY * LENGTH_OF_CAR_ORIENTATION_VECTOR + carPos.getY());		
 	}
 
 	private Line2D setCarOrientation2(float angle) {
@@ -783,7 +789,7 @@ public class SuperAI extends AI {
 		System.out.println("destinationAngleCar: " + destinationAngleCar);
 		System.out.println("getAngularVelocity: " + info.getAngularVelocity());
 		System.out.println("rotatingSpeed: " + rotatingSpeed);
-		System.out.println("speed: " + speed);
+		System.out.println("speed: " + speedSq);
 		System.out.println("drivingSpeed: " + drivingSpeed);
 		System.out.println("drivingDistanceToRoutePoint: " + drivingDistanceToRoutePoint);
 		System.out.println("drivingDistanceToCheckpoint: " + drivingDistanceToCheckpoint);

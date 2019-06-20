@@ -1,5 +1,7 @@
 package s0562844;
 
+import org.lwjgl.util.vector.Vector2f;
+
 import lenz.htw.ai4g.ai.Info;
 
 public class SpeedAcceleration {
@@ -11,7 +13,7 @@ public class SpeedAcceleration {
 	private static float absDestAngleCar = 0;
 	private static float getAngularVelocity = 0;
 	private static float absGetAngularVelocity = 0;
-	private static float speed = 0;
+	private static float speedSq = 0;
 	private static float accel = 0;
 	private static float rotatingSpeed = 0;
 	private static float drivingDistanceToRoutePoint = 0;
@@ -21,6 +23,8 @@ public class SpeedAcceleration {
 	private static Boolean routePointIsClose;
 	private static Boolean connectionDirect;
 	private static int resetCount;
+	private static Vector2f directionVector;
+	private static Vector2f velocity;
 
 	public SpeedAcceleration(Info info) {
 
@@ -28,14 +32,16 @@ public class SpeedAcceleration {
 
 	public static float calculate(float destAngleCarNew, float getAngularVelocityNew, float speedNew,
 			float distanceToRoutePoint, float distanceToCheckpoint, Boolean failurePointIsClose,
-			Boolean directConnection, int resetCount) {
+			Boolean directConnection, int resetCount, Vector2f directionVec, Vector2f carVelocity) {
 		destAngleCar = destAngleCarNew;
 		absDestAngleCar = Math.abs(destAngleCar);
 
 		getAngularVelocity = getAngularVelocityNew;
 		absGetAngularVelocity = Math.abs(getAngularVelocity);
 
-		speed = speedNew;
+		speedSq = speedNew;
+		velocity = carVelocity;
+		directionVector = directionVec;
 		drivingDistanceToRoutePoint = distanceToRoutePoint;
 		drivingDistanceToCheckpoint = distanceToCheckpoint;
 
@@ -54,7 +60,7 @@ public class SpeedAcceleration {
 		pointOfFailureIsClose = failurePointIsClose;
 		connectionDirect = directConnection;
 
-		return method4(); // for testing
+		return method6(); // for testing
 		// return currentSetting(resetCount);
 
 	}
@@ -78,7 +84,7 @@ public class SpeedAcceleration {
 			return accel;
 		}
 
-		accel = (drivingDistanceToCheckpoint * 2) / (speed * 40);
+		accel = (drivingDistanceToCheckpoint * 2) / (speedSq * 40);
 		if (accel > 1) {
 			accel = 1;
 		}
@@ -107,7 +113,7 @@ public class SpeedAcceleration {
 			}
 		}
 
-		accel = (drivingDistanceToCheckpoint * 2) / (speed * 40);
+		accel = (drivingDistanceToCheckpoint * 2) / (speedSq * 40);
 		if (accel > 1) {
 			accel = 1;
 		}
@@ -171,7 +177,7 @@ public class SpeedAcceleration {
 		}
 
 		if (routePointIsClose) {
-			return (drivingDistanceToRoutePoint * 2) / (speed * 40);
+			return (drivingDistanceToRoutePoint * 2) / (speedSq * 40);
 		}
 
 		if (checkpointIsClose) {
@@ -191,23 +197,94 @@ public class SpeedAcceleration {
 
 	private static float method5() {
 		float steering = 0;
-		float maxAcceleration = 100;
-		float maxSpeed = 784;
-		float targetRadius = 625; // pixel
-		float slowRadius = 2500; // pixel
+		float maxAcceleration = 6.5f;
+		float maxSpeed = 28;
+		float targetRadius = 5; // pixel
+		float slowRadius = 100; // pixel
 		float timeToTarget = 0.1f;
-		float distance = drivingDistanceToRoutePoint;
-		float targetSpeed;
+		float distance = (float) Math.sqrt(drivingDistanceToRoutePoint);
+		float targetSpeed;		
+		Vector2f targetVelocity;
 
 		if (distance < targetRadius) {
-			return 0;
+			return 0.0f;
 		}
 
 		if (distance > slowRadius) {
 			targetSpeed = maxSpeed;
 		} else {
-			targetSpeed = maxSpeed * distance / slowRadius;
+			targetSpeed = distance * maxSpeed / slowRadius;
 		}
+
+		targetVelocity = directionVector;
+		targetVelocity.normalise();		
+		targetVelocity.scale(targetSpeed);
+		
+		Vector2f.sub(targetVelocity, velocity, targetVelocity);		
+
+		steering = (float) Math.sqrt(targetVelocity.x * targetVelocity.x + targetVelocity.y * targetVelocity.y);
+		steering /= maxAcceleration;
+		System.out.println("distance: " + distance);
+		System.out.println("targetSpeed: " + targetSpeed);
+		System.out.println("steering /= maxAcceleration: " + steering);
+		
+//		steering /= timeToTarget;
+//		System.out.println("steering /= timeToTarget: " + steering);
+		System.out.println();
+
+		return steering;
+	}
+	
+	private static float method6() {
+		float steering = 0;
+		float maxAcceleration = 6.5f;
+		float maxSpeed = 28;
+		float targetRadius = 5; // pixel
+		float slowRadius = 25; // pixel
+		float fastRadius = 75;
+		float timeToTarget = 0.1f;
+		float distance = (float) Math.sqrt(drivingDistanceToRoutePoint);
+		float targetSpeed;
+		float speed = (float) Math.sqrt(speedSq);
+		float toleranceForAngularVelocity = 0.5f;
+		Vector2f targetVelocity;
+		
+		System.out.println("distance: " + distance);
+		System.out.println("speed: " + speed);
+		System.out.println("getAngularVelocity: " + getAngularVelocity);
+
+		if (distance < targetRadius) {
+			return 0.0f;
+		}
+		
+		if (distance > fastRadius && absGetAngularVelocity < toleranceForAngularVelocity) {
+			return 1f;
+		}
+
+		if (distance > slowRadius) {
+			targetSpeed = maxSpeed;
+		} else {
+			targetSpeed = distance * maxSpeed / slowRadius;
+		}
+
+
+		
+		System.out.println("targetSpeed: " + targetSpeed);
+
+//		steering = (float) (speed - Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y));
+		
+		
+		
+		
+		steering = (targetSpeed - speed/2) / maxSpeed;
+//		steering /= maxAcceleration;
+		
+		System.out.println("steering: " + steering);
+		
+		
+//		steering /= timeToTarget;
+		
+		System.out.println();
 
 		return steering;
 	}
