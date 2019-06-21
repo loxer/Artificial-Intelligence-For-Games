@@ -298,10 +298,6 @@ public class SpeedAcceleration {
 		float toleranceForAngularVelocity = 0.1f;
 		Vector2f targetVelocity;
 
-		System.out.println("distance: " + distance);
-		System.out.println("speed: " + speed);
-		System.out.println("absGetAngularVelocity: " + absGetAngularVelocity);
-
 		if (distance < targetRadius) {
 			return 0.1f;
 		}
@@ -320,19 +316,7 @@ public class SpeedAcceleration {
 			}
 		}
 
-		System.out.println("targetSpeed: " + targetSpeed);
-
-		// steering = (float) (speed - Math.sqrt(velocity.x * velocity.x + velocity.y *
-		// velocity.y));
-
 		steering = (targetSpeed - speed / 2) / maxSpeed;
-		// steering /= maxAcceleration;
-
-		System.out.println("steering: " + steering);
-
-		// steering /= timeToTarget;
-
-		System.out.println();
 
 		return steering;
 	}
@@ -348,4 +332,18 @@ public class SpeedAcceleration {
 		// }
 	}
 
+
+//	private void arrive() {
+//		float distance = (float) Math.sqrt(drivingDistanceToRoutePoint);
+//		if (distance < 1) {
+//			drivingSpeed = 0;
+//			resetDestination = false;
+//		} else {
+//			desiredSpeed = distance * info.getMaxVelocity() / SLOWING_RADIUS;
+//			float speedX = info.getVelocity().x;
+//			float speedY = info.getVelocity().y;
+//			drivingSpeed = (float) ((desiredSpeed - ((speedX * speedX) + (speedY * speedY))) / 2);
+//		}
+//	}
+	
 }

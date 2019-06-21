@@ -43,7 +43,7 @@ public class RotatingAcceleration {
 
 		connectionDirect = directConnection;
 		
-		return method5(); // for testing
+		return method6(); // for testing
 //		return currentSetting(resetCount);
 		
 
@@ -192,6 +192,36 @@ public class RotatingAcceleration {
 		
 		return steering;
 	}
+	
+	public static float method6() { 
+		float maxAngularAcceleration = maxAbsoluteAngularAcceleration; // =1
+		float maxRotation = 1f;
+		float targetRadius = 0.001f;
+		float slowRadius = 0.2f;
+		float targetRotation = 0f;
+		float timeToTarget = 0.1f;
+		float rotationSize = absDestAngleCar;
+		float rotationDirection = Math.signum(destAngleCar);
+		float characterRotation = getAngularVelocity;
+		float steering;
+			
+		if(rotationSize < targetRadius) {
+			return 0;
+		}
+		
+		if(rotationSize > slowRadius) {
+			targetRotation = maxRotation;
+		} else {
+			targetRotation = maxRotation * rotationSize / slowRadius;
+		}
+		
+		targetRotation *= rotationDirection;
+		
+		steering = targetRotation - characterRotation;
+		steering /= timeToTarget;
+			
+			return steering;
+		}
 	
 	
 	

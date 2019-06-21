@@ -50,6 +50,8 @@ public class SuperAI extends AI {
 	private float destinationAngleCar = 0;
 	private float drivingDistanceToRoutePoint = 0;
 	private float drivingDistanceToCheckpoint = 0;
+	private Boolean carIsInSlowZone = false;
+	private Boolean carIsInFastZone = false;
 	private Boolean resetDestination = true;
 	private Boolean keepTurning = true;
 	private Boolean destinationIsLeft = true;
@@ -90,6 +92,8 @@ public class SuperAI extends AI {
 	private int currentRoutePoint = 1;
 	private Point2D[] helperCoordinates;
 	private Vertex[] vertices;
+	private Boolean checkpointIsInSlowZone;
+	private Boolean checkpointIsInFastZone;
 	private Vertex currentDrivingDestination;
 	private Vertex currentCheckpoint;
 	private Vertex currentPosition = new Vertex();
@@ -151,10 +155,10 @@ public class SuperAI extends AI {
 	}
 
 	private void calculateSizeOfObstacleCorners() {
-		if (amountOfObstaclePoints < 40) {
+		if (amountOfObstaclePoints < 60) {
 			sizeOfObstacleCorners = 20;
 		} else {
-			sizeOfObstacleCorners = 20;
+			sizeOfObstacleCorners = 15;
 		}
 	}
 
@@ -246,7 +250,7 @@ public class SuperAI extends AI {
 
 			// Both are in the slow Terrain
 		} else if (pointOneInsideSlowZone && pointTwoInsideSlowZone) {
-			return distance *= 4.5;
+			return distance *= 5.0;
 
 			// Both are in the fast Terrain
 		} else if (pointOneInsideFastZone && pointTwoInsideFastZone) {
@@ -255,7 +259,7 @@ public class SuperAI extends AI {
 			// One is in standard, the other in slow
 		} else if (pointOneInsideSlowZone ^ pointTwoInsideSlowZone && !pointOneInsideFastZone
 				&& !pointTwoInsideFastZone) {
-			return distance *= 3.0;
+			return distance *= 4.0;
 
 			// One is in standard, the other in fast
 		} else if (!pointOneInsideSlowZone && !pointTwoInsideSlowZone
@@ -326,13 +330,13 @@ public class SuperAI extends AI {
 		// Gathering information
 		setTimer();
 		setUpLocation();
-		setOrientation();
+		setWorldOrientation();
 		calculateDistances();
 		calculateAngleToDestination();
 		calculateDestinationFromMyPerspective();
 		calculateDrivingSpeed();
 		// calculateDestinationFromMyPerspective2();
-		checkDirectionOfDestination();
+
 		setCarOrientation();
 		setCarOrientationVector();
 		checkForFailure();
@@ -340,22 +344,53 @@ public class SuperAI extends AI {
 
 		// Driving methods
 		lookForRoute();
-		checkKeepTurning();
+		setSteering();
+
+		/*
+		 * first value = speed second value: if positive -> drive left || if negative ->
+		 * drive right
+		 */
+
+		return new DriverAction(drivingSpeed, rotatingSpeed);
+
+	}
+
+	private void setSteering() {
 		rotatingSpeed = RotatingAcceleration.calculate(destinationAngleCar, info.getAngularVelocity(), speedSq,
 				drivingDistanceToRoutePoint, drivingDistanceToCheckpoint, directConnection, resetCounter);
-		// align(drivingDistance);
-		// correctDrivingDirection();
-		// arrive();
 
-		if (slowZones.isInsideHere(carLocation)) {
-			drivingSpeed = 1;
-		} else if (pointOfFailureIsClose()) {
+		if (carIsInSlowZone || carIsInFastZone) {
+			if (resetCounter < 2 || !checkpointIsInSlowZone && !checkpointIsInFastZone || !slowZones
+					.bothPointsAreInTheSameArea(currentPosition.getLocation(), currentCheckpoint.getLocation())
+					&& !fastZones.bothPointsAreInTheSameArea(currentPosition.getLocation(),
+							currentCheckpoint.getLocation()))
+				drivingSpeed = 1;
+		} else if (resetCounter > 1 && pointOfFailureIsClose()) {
 			drivingSpeed = 0.35f;
 		} else {
 			drivingSpeed = SpeedAcceleration.calculate(destinationAngleCar, info.getAngularVelocity(), speedSq,
-					drivingDistanceToRoutePoint, drivingDistanceToCheckpoint, directConnection,
-					resetCounter, directionVector, info.getVelocity());
+					drivingDistanceToRoutePoint, drivingDistanceToCheckpoint, directConnection, resetCounter,
+					directionVector, info.getVelocity());
 		}
+
+		if (drivingDistanceToRoutePoint < 2500 && speedSq > 200 && !carIsInFastZone && !carIsInSlowZone) {
+			drivingSpeed = -1;
+			rotatingSpeed = 1 * Math.signum(rotatingSpeed);
+		}
+
+		if (Math.abs(destinationAngleCar) > 1.5) { // if destination is behind car, turn around first
+			drivingSpeed *= (-1);
+		}
+		
+		
+		System.out.println("drivingDistanceToRoutePoint: " + drivingDistanceToRoutePoint);
+		System.out.println("speedSq: " + speedSq);
+		System.out.println("absGetAngularVelocity: " + Math.abs(info.getAngularVelocity()));
+
+		System.out.println("drivingSpeed: " + drivingSpeed);
+		System.out.println("rotatingSpeed: " + rotatingSpeed);
+		System.out.println();
+		// testStuff
 		// float turningSpeed = 0;
 		//
 		// if (info.getVelocity().x > 28f) {
@@ -364,13 +399,6 @@ public class SuperAI extends AI {
 		// System.out.println(turningSpeed);
 		// checkValues();
 		// return new DriverAction(1f, turningSpeed);
-
-		/*
-		 * first value = speed second value: if positive -> drive left || if negative ->
-		 * drive right
-		 */
-
-		return new DriverAction(drivingSpeed, rotatingSpeed);
 
 	}
 
@@ -400,7 +428,8 @@ public class SuperAI extends AI {
 	private void setUpLocation() {
 		carLocation.setLocation(info.getX(), info.getY());
 		carPos.set(info.getX(), info.getY());
-
+		carIsInSlowZone = slowZones.isInsideHere(carLocation);
+		carIsInFastZone = fastZones.isInsideHere(carLocation);
 		directionVector = calculateDirectionVector(routepointPos);
 	}
 
@@ -484,6 +513,9 @@ public class SuperAI extends AI {
 		findVerticesConnectedToThisVertex(currentCheckpoint);
 		findVerticesConnectedToThisVertex(currentPosition);
 
+		checkpointIsInSlowZone = slowZones.isInsideHere(checkpointLocation);
+		checkpointIsInFastZone = fastZones.isInsideHere(checkpointLocation);
+
 		currentCheckpoint.setReady(0);
 		currentPosition.setReady(0);
 	}
@@ -512,7 +544,7 @@ public class SuperAI extends AI {
 		checkForNewRoute = false;
 	}
 
-	private void setOrientation() {
+	private void setWorldOrientation() {
 		orientationAngleWorld = info.getOrientation();
 	}
 
@@ -524,27 +556,6 @@ public class SuperAI extends AI {
 
 	private float calculateDrivingDistance(Vertex vertex) {
 		return (float) carLocation.distanceSq(vertex.getLocation());
-	}
-
-	private void checkDirectionOfDestination() {
-		if (Math.signum(destinationAngleCar) == -1) {
-			destinationIsLeft = false;
-		} else {
-			destinationIsLeft = true;
-		}
-	}
-
-	private void arrive() {
-		float distance = (float) Math.sqrt(drivingDistanceToRoutePoint);
-		if (distance < 1) {
-			drivingSpeed = 0;
-			resetDestination = false;
-		} else {
-			desiredSpeed = distance * info.getMaxVelocity() / SLOWING_RADIUS;
-			float speedX = info.getVelocity().x;
-			float speedY = info.getVelocity().y;
-			drivingSpeed = (float) ((desiredSpeed - ((speedX * speedX) + (speedY * speedY))) / 2);
-		}
 	}
 
 	private void calculateDestinationFromMyPerspective2() { // sth wrong
@@ -741,14 +752,6 @@ public class SuperAI extends AI {
 		Vertex randomPoint = vertices[random.nextInt(vertices.length)];
 
 		return randomPoint;
-	}
-
-	private void checkKeepTurning() {
-		if (makeNegativeToPositive(destinationAngleCar) < TURNING_TOLERANCE) {
-			keepTurning = false;
-		} else {
-			keepTurning = true;
-		}
 	}
 
 	private float makeNegativeToPositive(float x) { // same as Math.abs();

@@ -89,6 +89,15 @@ public class Terrain {
 		}
 		return false;
 	}
+	
+	public Boolean bothPointsAreInTheSameArea(Point2D point1, Point2D point2) {
+		for (int i = 0; i < polygon.length; i++) {
+			if (polygon[i].contains(point1) && polygon[i].contains(point2) ) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public Boolean isSomethingInTheWay(Line2D line) {
 		for (int i = 0; i < lines.length; i++) {
