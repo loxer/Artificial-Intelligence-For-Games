@@ -6,8 +6,7 @@ public class RotatingAcceleration {
 
 	private static float maxAbsoluteAngularAcceleration;
 	private static float getMaxAbsoluteAngularVelocity;
-	
-	
+
 	private static float destAngleCar = 0;
 	private static float absDestAngleCar = 0;
 	private static float getAngularVelocity = 0;
@@ -42,23 +41,22 @@ public class RotatingAcceleration {
 		rotatingDifferentToGoal = Math.signum(destAngleCar) != Math.signum(getAngularVelocity);
 
 		connectionDirect = directConnection;
-		
+
 		return method6(); // for testing
-//		return currentSetting(resetCount);
-		
+		// return currentSetting(resetCount);
 
 	}
-	
+
 	private static float currentSetting(int resetCount) {
-		if(resetCount % 4 == 0) {
+		if (resetCount % 4 == 0) {
 			return method2();
-		} else if(resetCount % 4 == 1) {
+		} else if (resetCount % 4 == 1) {
 			return method1();
-		} else if(resetCount % 4 == 2) {
+		} else if (resetCount % 4 == 2) {
 			return method3();
 		} else {
 			return method4();
-		}		
+		}
 	}
 
 	private static float method1() {
@@ -125,7 +123,7 @@ public class RotatingAcceleration {
 		float tolerance = 0.0005f;
 
 		if (rotatingDifferentToGoal) {
-			rotatingSpeed = destAngleCar - getAngularVelocity*1.5f;
+			rotatingSpeed = destAngleCar - getAngularVelocity * 1.5f;
 		} else {
 			if (absDestAngleCar + absGetAngularVelocity < tolerance) {
 				rotatingSpeed = 0;
@@ -133,21 +131,21 @@ public class RotatingAcceleration {
 				rotatingSpeed = 1.5f * destAngleCar - getAngularVelocity;
 			}
 		}
-		
-		rotatingSpeed += getAngularVelocity * (-1); 
-		
+
+		rotatingSpeed += getAngularVelocity * (-1);
+
 		return rotatingSpeed;
 	}
-	
+
 	private static float method4() {
 		float tolerance = 0.0005f;
-		
-		if(connectionDirect) {
+
+		if (connectionDirect) {
 			rotatingSpeed = destAngleCar;
 		}
 
 		if (rotatingDifferentToGoal) {
-			rotatingSpeed = destAngleCar - getAngularVelocity*1.5f;
+			rotatingSpeed = destAngleCar - getAngularVelocity * 1.5f;
 		} else {
 			if (absDestAngleCar + absGetAngularVelocity < tolerance) {
 				rotatingSpeed = 0;
@@ -155,45 +153,13 @@ public class RotatingAcceleration {
 				rotatingSpeed = 1.5f * destAngleCar - getAngularVelocity;
 			}
 		}
-		
-		rotatingSpeed += getAngularVelocity * (-1); 
-		
+
+		rotatingSpeed += getAngularVelocity * (-1);
+
 		return rotatingSpeed;
 	}
-	
-	
-	
+
 	public static float method5() { // book Method
-	float maxAngularAcceleration = maxAbsoluteAngularAcceleration; // =1
-	float maxRotation = 1f;
-	float targetRadius = 0.001f;
-	float slowRadius = 0.2f;
-	float targetRotation = 0f;
-	float timeToTarget = 0.1f;
-	float rotationSize = absDestAngleCar;
-	float rotationDirection = Math.signum(destAngleCar);
-	float characterRotation = getAngularVelocity;
-	float steering;
-		
-	if(rotationSize < targetRadius) {
-		return 0;
-	}
-	
-	if(rotationSize > slowRadius) {
-		targetRotation = maxRotation;
-	} else {
-		targetRotation = maxRotation * rotationSize / slowRadius;
-	}
-	
-	targetRotation *= rotationDirection;
-	
-	steering = targetRotation - characterRotation;
-	steering /= timeToTarget;
-		
-		return steering;
-	}
-	
-	public static float method6() { 
 		float maxAngularAcceleration = maxAbsoluteAngularAcceleration; // =1
 		float maxRotation = 1f;
 		float targetRadius = 0.001f;
@@ -204,33 +170,66 @@ public class RotatingAcceleration {
 		float rotationDirection = Math.signum(destAngleCar);
 		float characterRotation = getAngularVelocity;
 		float steering;
-			
-		if(rotationSize < targetRadius) {
+
+		if (rotationSize < targetRadius) {
 			return 0;
 		}
-		
-		if(rotationSize > slowRadius) {
+
+		if (rotationSize > slowRadius) {
 			targetRotation = maxRotation;
 		} else {
 			targetRotation = maxRotation * rotationSize / slowRadius;
 		}
-		
+
 		targetRotation *= rotationDirection;
-		
+
 		steering = targetRotation - characterRotation;
 		steering /= timeToTarget;
-			
-			return steering;
+
+		return steering;
+	}
+
+	public static float method6() {
+		float maxAngularAcceleration = maxAbsoluteAngularAcceleration; // =1
+		float maxRotation = 1f;
+		float targetRadius = 0.001f;
+		float slowRadius = 0.2f;
+		float targetRotation = 0f;
+		float timeToTarget = 0.1f;
+		float rotationSize = absDestAngleCar;
+		float rotationDirection = Math.signum(destAngleCar);
+		float characterRotation = getAngularVelocity;
+		float characterRotationDirection = Math.signum(getAngularVelocity);
+
+		float balancingCharacterRotation = 0;
+		float steering;
+
+		if (rotationSize < targetRadius) {
+			return 0;
 		}
-	
-	
-	
+
+		if (rotationSize > slowRadius) {
+			targetRotation = maxRotation;
+		} else {
+			targetRotation = maxRotation * rotationSize / slowRadius;
+		}
+
+		targetRotation *= rotationDirection;
+
+		steering = targetRotation - characterRotation;
+		steering /= timeToTarget;
+
+		if (rotationDirection != characterRotationDirection) {
+			balancingCharacterRotation = characterRotation / -1.5f;
+		}
+		steering += balancingCharacterRotation;
+
+		return steering;
+	}
+
 	public static Boolean rotatingDifferentToGoal() {
 		return rotatingDifferentToGoal;
 	}
-	
-	
-	
 
 	// public void align(float angleToCheckpoint) {
 	// float angVel = 0;
