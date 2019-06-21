@@ -156,7 +156,7 @@ public class SuperAI extends AI {
 
 	private void calculateSizeOfObstacleCorners() {
 		if (amountOfObstaclePoints < 60) {
-			sizeOfObstacleCorners = 20;
+			sizeOfObstacleCorners = 15;
 		} else {
 			sizeOfObstacleCorners = 15;
 		}
@@ -219,8 +219,8 @@ public class SuperAI extends AI {
 			vertices[i].setReady(getExtraCosts(vertices[i].getLocation()));
 			// vertices[i].setReady(0);
 		}
-		printNumberOfConnections();
-		printNumberOfObstacles();
+//		printNumberOfConnections();
+//		printNumberOfObstacles();
 	}
 
 	private float considerTerrain(Point2D point1, Point2D point2, Line2D connection, float distance) {
@@ -356,14 +356,13 @@ public class SuperAI extends AI {
 	}
 
 	private void setSteering() {
+		Boolean carAndDestInSameSpecialTerrain = slowZones.bothPointsAreInTheSameArea(currentPosition.getLocation(), currentCheckpoint.getLocation()) || fastZones.bothPointsAreInTheSameArea(currentPosition.getLocation(), currentCheckpoint.getLocation());
+		
 		rotatingSpeed = RotatingAcceleration.calculate(destinationAngleCar, info.getAngularVelocity(), speedSq,
 				drivingDistanceToRoutePoint, drivingDistanceToCheckpoint, directConnection, resetCounter);
 
 		if (carIsInSlowZone || carIsInFastZone) {
-			if (resetCounter < 2 || !checkpointIsInSlowZone && !checkpointIsInFastZone || !slowZones
-					.bothPointsAreInTheSameArea(currentPosition.getLocation(), currentCheckpoint.getLocation())
-					&& !fastZones.bothPointsAreInTheSameArea(currentPosition.getLocation(),
-							currentCheckpoint.getLocation()))
+			if (resetCounter < 2 || !checkpointIsInSlowZone && !checkpointIsInFastZone || !carAndDestInSameSpecialTerrain)
 				drivingSpeed = 1;
 		} else if (resetCounter > 1 && pointOfFailureIsClose()) {
 			drivingSpeed = 0.35f;
@@ -373,8 +372,10 @@ public class SuperAI extends AI {
 					directionVector, info.getVelocity());
 		}
 
-		if (drivingDistanceToRoutePoint < 2500 && speedSq > 200 && !carIsInFastZone && !carIsInSlowZone) {
-			drivingSpeed = -1;
+		if (drivingDistanceToRoutePoint < 2500) {
+			if (resetCounter < 2 && speedSq > 200 && !checkpointIsInSlowZone && !checkpointIsInFastZone && !carAndDestInSameSpecialTerrain && !carIsInSlowZone && !carIsInFastZone) {
+				drivingSpeed = -1;
+			}
 			rotatingSpeed = 1 * Math.signum(rotatingSpeed);
 		}
 
@@ -382,14 +383,9 @@ public class SuperAI extends AI {
 			drivingSpeed *= (-1);
 		}
 		
-		
-		System.out.println("drivingDistanceToRoutePoint: " + drivingDistanceToRoutePoint);
-		System.out.println("speedSq: " + speedSq);
-		System.out.println("absGetAngularVelocity: " + Math.abs(info.getAngularVelocity()));
 
-		System.out.println("drivingSpeed: " + drivingSpeed);
-		System.out.println("rotatingSpeed: " + rotatingSpeed);
-		System.out.println();
+		
+		
 		// testStuff
 		// float turningSpeed = 0;
 		//
@@ -401,6 +397,11 @@ public class SuperAI extends AI {
 		// return new DriverAction(1f, turningSpeed);
 
 	}
+	
+	
+	
+
+	
 
 	private void setTimer() {
 		frames++;
@@ -786,6 +787,7 @@ public class SuperAI extends AI {
 		// Show.nextLine(showLine);
 
 		// Print stuff
+//		printSteeringInformation();
 		if (frames % 30 == 0) {
 			// printDrivingInformation();
 			// printTestMethods();
@@ -828,6 +830,19 @@ public class SuperAI extends AI {
 		}
 		System.out.println("Timer: " + minutes + ":" + seconds);
 		// System.out.println("probablyStucked(): " + probablyStucked());
+		System.out.println();
+		System.out.println("-----------------");
+		System.out.println();
+	}
+	
+	private void printSteeringInformation() {
+		System.out.println("---Steering Information---");
+		System.out.println("drivingDistanceToRoutePoint: " + drivingDistanceToRoutePoint);
+		System.out.println("speedSq: " + speedSq);
+		System.out.println("absGetAngularVelocity: " + Math.abs(info.getAngularVelocity()));
+
+		System.out.println("drivingSpeed: " + drivingSpeed);
+		System.out.println("rotatingSpeed: " + rotatingSpeed);
 		System.out.println();
 		System.out.println("-----------------");
 		System.out.println();

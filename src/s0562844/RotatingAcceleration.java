@@ -219,9 +219,14 @@ public class RotatingAcceleration {
 		steering = targetRotation - characterRotation;
 		steering /= timeToTarget;
 
+//		if (rotationDirection != characterRotationDirection) {
+//			balancingCharacterRotation = characterRotation / -1.5f;
+//		}
+		
 		if (rotationDirection != characterRotationDirection) {
-			balancingCharacterRotation = characterRotation / -1.5f;
-		}
+		balancingCharacterRotation = characterRotation / -1.5f;
+	}
+		
 		steering += balancingCharacterRotation;
 
 		return steering;
